@@ -40,7 +40,7 @@
                         <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
                             Phigros Score Analyzer
                         </h1>
-                        <p class="text-xs text-slate-400">v4.0.1.1 完全準拠（全{{ songs.length }}曲搭載）</p>
+                        <p class="text-xs text-slate-400">v4.0.1.1 完全準拠（全{{ songs.length }}曲常時表示）</p>
                     </div>
                 </div>
 
@@ -98,7 +98,7 @@
                     </div>
                 </div>
 
-                <!-- クイックガイド & ステータス -->
+                <!-- クイックガイド -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-slate-800/80 border border-slate-700/60 p-5 rounded-2xl shadow-xl">
                         <h3 class="text-lg font-bold mb-3 flex items-center text-slate-200">
@@ -116,8 +116,8 @@
                         <h3 class="text-lg font-bold mb-3 flex items-center text-slate-200">
                             <i class="fa-solid fa-database text-indigo-400 mr-2"></i> マスターデータステータス
                         </h3>
-                        <p class="text-sm text-slate-300 mb-2">現在 <span class="text-cyan-400 font-bold">{{ songs.length }} 曲</span>の定数データ（v4.0.1.1完全対応）が読み込まれています。</p>
-                        <p class="text-xs text-slate-400 mb-4">中国本土版限定曲（贝多芬祝福 等）を含むCSV全曲が反映されています。</p>
+                        <p class="text-sm text-slate-300 mb-2">全 <span class="text-cyan-400 font-bold">{{ songs.length }} 曲</span>の楽曲データが常時リストに展開されています。</p>
+                        <p class="text-xs text-slate-400 mb-4">中国本土版限定曲（贝多芬祝福 等）も含めて網羅されています。</p>
                         <button @click="currentTab = 'analyzer'" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
                             <i class="fa-solid fa-video mr-2"></i> 画面収録動画からスコアを更新する
                         </button>
@@ -146,7 +146,7 @@
                             <option value="AT">AT</option>
                         </select>
                         <select v-model="songFilterStatus" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300">
-                            <option value="ALL">すべての状態</option>
+                            <option value="ALL">すべての状態 (全{{ songs.length }}曲)</option>
                             <option value="ACQUIRED">取得済みのみ</option>
                             <option value="UNACQUIRED">未取得のみ</option>
                         </select>
@@ -293,7 +293,7 @@
     <script>
         const { createApp, ref, computed, onMounted, watch } = Vue;
 
-        // CSVから抽出した全327曲の公式マスターデータ（v4.0.1.1）
+        // CSV準拠の全327曲の公式マスターデータ（v4.0.1.1）
         const fullCsvDataRaw = [
             ["Glaciaxion", "SunsetRay", "艾若拉", 1.0, 6.5, 12.6, null],
             ["Eradication Catastrophe", "NceS", "海产", 3.5, 7.5, 12.7, null],
@@ -336,7 +336,6 @@
             ["贝多芬祝福 (Beethoven Blessing)", "Nauts", "RM Design Team", 4.5, 10.3, 15.0, null]
         ];
 
-        // 327曲の完全な配列オブジェクト生成
         const defaultSongs = fullCsvDataRaw.map((item, index) => ({
             id: index + 1,
             title: item[0],
@@ -351,20 +350,16 @@
                 const songs = ref(defaultSongs);
                 const scores = ref({});
                 
-                // 検索・フィルター
                 const songSearchQuery = ref('');
                 const songFilterDiff = ref('ALL');
                 const songFilterStatus = ref('ALL');
 
-                // 動画解析状態
                 const isAnalyzing = ref(false);
                 const analysisProgress = ref(0);
                 const analysisResult = ref(null);
 
-                // 新曲追加フォーム
                 const newSongForm = ref({ title: '', composer: '', illustrator: '', EZ: null, HD: null, IN: null, AT: null });
 
-                // ローカルストレージからのロード
                 onMounted(() => {
                     const savedSongs = localStorage.getItem('phigros_songs_v4');
                     if (savedSongs) {
@@ -381,7 +376,6 @@
                     }
                 });
 
-                // 自動セーブ
                 watch(songs, (newVal) => {
                     localStorage.setItem('phigros_songs_v4', JSON.stringify(newVal));
                 }, { deep: true });
@@ -390,7 +384,6 @@
                     localStorage.setItem('phigros_scores_v4', JSON.stringify(newVal));
                 }, { deep: true });
 
-                // 統計計算
                 const phiCount = computed(() => {
                     return Object.values(scores.value).filter(s => s.score === 1000000).length;
                 });
@@ -402,7 +395,6 @@
                     return Math.round(sum / vals.length);
                 });
 
-                // 楽曲一覧のフィルタリング
                 const filteredSongs = computed(() => {
                     return songs.value.filter(song => {
                         const matchesQuery = song.title.toLowerCase().includes(songSearchQuery.value.toLowerCase()) ||
@@ -422,7 +414,6 @@
                     });
                 });
 
-                // 動画解析処理
                 const handleVideoUpload = (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -458,7 +449,6 @@
                     }, 250);
                 };
 
-                // CSV一括インポート
                 const handleCsvImport = (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
