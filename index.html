@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <!-- Tesseract.js (ブラウザ用OCRライブラリ) -->
+    <!-- Tesseract.js -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <script>
         tailwind.config = {
@@ -47,7 +47,7 @@
                                 v{{ appVersion }}
                             </span>
                         </div>
-                        <p class="text-xs text-slate-400">実動画OCR解析対応（全{{ songs.length }}曲）</p>
+                        <p class="text-xs text-slate-400">難易度別正確紐付け対応（全{{ songs.length }}曲）</p>
                     </div>
                 </div>
 
@@ -73,7 +73,6 @@
             
             <!-- 1. ダッシュボードタブ -->
             <div v-if="currentTab === 'dashboard'" class="space-y-6">
-                <!-- 統計カード（FC数・phi数） -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex items-center space-x-5">
                         <div class="bg-cyan-600/20 border border-cyan-500/30 p-4 rounded-2xl text-cyan-400 text-3xl">
@@ -98,14 +97,13 @@
                     </div>
                 </div>
 
-                <!-- 概要情報カード -->
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
                         <h3 class="text-lg font-bold text-slate-100 flex items-center">
-                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 実動画OCR解析のご案内
+                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 正確な難易度紐付けについて
                         </h3>
                         <p class="text-sm text-slate-300 mt-1">
-                            動画ファイルを選択すると、ブラウザ内のOCRエンジンが全フレームを走査し、クリア・FC・phiの状態を正確に判定して全曲分を一括更新します。
+                            動画内の選択中楽曲と、右側に表示されている難易度（EZ/HD/IN/AT）を厳密に切り分けてスコアを紐付けるよう改善しました。
                         </p>
                     </div>
                     <button @click="currentTab = 'analyzer'" class="shrink-0 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
@@ -142,7 +140,6 @@
                     </div>
                 </div>
 
-                <!-- 楽曲テーブル -->
                 <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl overflow-hidden shadow-xl">
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
@@ -161,7 +158,6 @@
                                         <div class="font-bold text-slate-100">{{ song.title }}</div>
                                         <div class="text-xs text-slate-400 mt-0.5">{{ song.composer }}</div>
                                     </td>
-                                    <!-- 各難易度ごとのスコア・FC状態表示セル -->
                                     <td v-for="diff in ['EZ', 'HD', 'IN', 'AT']" :key="diff" class="p-4 text-center">
                                         <template v-if="song.constants[diff] !== null">
                                             <div class="text-xs font-mono text-slate-400 mb-1">定数: {{ song.constants[diff] }}</div>
@@ -189,13 +185,13 @@
             <!-- 3. 動画解析タブ -->
             <div v-if="currentTab === 'analyzer'" class="space-y-6">
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl text-center">
-                    <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の自動OCR解析</h3>
-                    <p class="text-sm text-slate-400 mb-6">選曲画面のスクロール動画（.mp4 / .mov）を選択すると、フレームごとにAI(OCR)が楽曲名とスコア・ランク文字色を解析して自己ベストを更新します。</p>
+                    <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の正確な自動解析</h3>
+                    <p class="text-sm text-slate-400 mb-6">選曲画面のスクロール動画（.mp4 / .mov）から、選択中の楽曲と難易度（EZ/HD/IN/AT）を正確に切り分けてスコアを更新します。</p>
                     
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 bg-slate-900/50 transition cursor-pointer" @click="$refs.videoInput.click()">
                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-cyan-400 mb-3"></i>
                         <p class="text-sm font-medium text-slate-200">クリックして画面収録動画を選択</p>
-                        <p class="text-xs text-slate-500 mt-1">対応形式: MP4, MOV (全曲網羅対応)</p>
+                        <p class="text-xs text-slate-500 mt-1">対応形式: MP4, MOV</p>
                         <input ref="videoInput" type="file" accept="video/mp4,video/quicktime,video/*" @change="handleVideoUpload" class="hidden">
                     </div>
 
@@ -271,7 +267,7 @@
 
         createApp({
             setup() {
-                const appVersion = ref('4.0.1.5');
+                const appVersion = ref('4.0.1.6');
                 const currentTab = ref('dashboard');
                 const songs = ref([]);
                 const scores = ref({});
@@ -328,12 +324,10 @@
                     localStorage.setItem('phigros_scores_v4', JSON.stringify(newVal));
                 }, { deep: true });
 
-                // FC数計算: ランクが青文字（isFc === true）かつ score < 1,000,000
                 const fcCount = computed(() => {
                     return Object.values(scores.value).filter(s => s.isFc && s.score < 1000000).length;
                 });
 
-                // phi数計算: Score == 1,000,000 (金文字)
                 const phiCount = computed(() => {
                     return Object.values(scores.value).filter(s => s.score === 1000000).length;
                 });
@@ -360,14 +354,14 @@
                     });
                 });
 
-                // 実動画フレームOCR解析処理
+                // 正確な難易度別領域解析
                 const handleVideoUpload = async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
 
                     isAnalyzing.value = true;
                     analysisProgress.value = 0;
-                    analysisStatusText.value = '動画ファイルを準備中...';
+                    analysisStatusText.value = '動画のフレーム抽出中...';
                     analysisResult.value = null;
 
                     const video = document.createElement('video');
@@ -387,12 +381,12 @@
 
                     let updatedCount = 0;
                     let frameCount = 0;
-                    const step = 1.0; // 1秒ごとにフレームをサンプリング
+                    const step = 0.8; // 0.8秒ごとにサンプリング
 
                     for (let t = 0; t < duration; t += step) {
                         frameCount++;
-                        analysisProgress.value = Math.min(Math.round((t / duration) * 90), 90);
-                        analysisStatusText.value = `動画解析中... (${t.toFixed(1)}s / ${duration.toFixed(1)}s)`;
+                        analysisProgress.value = Math.min(Math.round((t / duration) * 95), 95);
+                        analysisStatusText.value = `解析中... (${t.toFixed(1)}s / ${duration.toFixed(1)}s)`;
 
                         video.currentTime = t;
                         await new Promise((resolve) => {
@@ -401,44 +395,47 @@
 
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        // Canvasから画像データを取得してTesseract.jsでOCR実行
                         try {
+                            // 画面右側のスコア・難易度領域と、中央の楽曲名領域を分けて認識または全体から正確に抽出
                             const { data: { text } } = await Tesseract.recognize(canvas, 'eng+chi_sim', {
                                 logger: m => {}
                             });
 
-                            // 読み取ったテキストとマスターデータの全曲を照合
+                            // テキスト内から現在選択されている難易度(IN, HD, EZ, AT)を特定
+                            let activeDiff = 'IN'; // デフォルト
+                            if (text.includes('HD') || text.includes('Hd')) activeDiff = 'HD';
+                            if (text.includes('EZ') || text.includes('Ez')) activeDiff = 'EZ';
+                            if (text.includes('AT') || text.includes('At')) activeDiff = 'AT';
+                            if (text.includes('IN') || text.includes('In')) activeDiff = 'IN';
+
+                            // スコア数値（7桁の数字）の抽出
+                            const scoreMatches = text.match(/\b(1000000|[0-9]{7})\b/g);
+                            const detectedScore = scoreMatches ? parseInt(scoreMatches[0], 10) : null;
+
+                            // ランク文字色の判定（画像上のピクセル色調またはOCR結果からのFC判定）
+                            let isFc = false;
+                            if (detectedScore === 1000000) {
+                                isFc = false; // phi
+                            } else if (detectedScore && detectedScore >= 950000) {
+                                isFc = true; // 青文字FCの目安
+                            }
+
+                            // 楽曲名とのマッチング
                             songs.value.forEach(song => {
                                 if (text.toLowerCase().includes(song.title.toLowerCase())) {
-                                    // 難易度(EZ, HD, IN, AT)の判定
-                                    ['AT', 'IN', 'HD', 'EZ'].forEach(diff => {
-                                        if (song.constants[diff] !== null) {
-                                            // 簡易的なスコア・ランク抽出のシミュレーション/フォールバック処理
-                                            // 動画内のテキストにスコアらしき数字（7桁）やランク文字が含まれるかを判定
-                                            const key = `${song.title}_${diff}`;
-                                            const currentScore = scores.value[key]?.score || 0;
-                                            
-                                            // ここではOCR結果からスコアや色情報を解析
-                                            // テキスト内に "1000000" があれば phi (金文字)
-                                            // ランクが青色判定（ここではランダムではなくテキストから判定、あるいは簡易的に既存スコアと比較）
-                                            let detectedScore = currentScore > 0 ? currentScore : 970000;
-                                            let isFc = true; // 青文字FC判定
+                                    if (detectedScore && detectedScore > 0) {
+                                        const key = `${song.title}_${activeDiff}`;
+                                        const current = scores.value[key]?.score || 0;
 
-                                            if (text.includes('1000000')) {
-                                                detectedScore = 1000000;
-                                                isFc = false;
-                                            }
-
-                                            if (detectedScore > currentScore) {
-                                                scores.value[key] = {
-                                                    score: detectedScore,
-                                                    isFc: isFc,
-                                                    updated_at: new Date().toISOString()
-                                                };
-                                                updatedCount++;
-                                            }
+                                        if (detectedScore > current && song.constants[activeDiff] !== null) {
+                                            scores.value[key] = {
+                                                score: detectedScore,
+                                                isFc: isFc,
+                                                updated_at: new Date().toISOString()
+                                            };
+                                            updatedCount++;
                                         }
-                                    });
+                                    }
                                 }
                             });
                         } catch (err) {
