@@ -37,9 +37,14 @@
                         <i class="fa-solid fa-gamepad text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-                            Phigros Score Analyzer
-                        </h1>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+                                Phigros Score Analyzer
+                            </h1>
+                            <span class="px-2 py-0.5 bg-cyan-950 border border-cyan-800 text-cyan-400 font-mono text-xs font-semibold rounded-md">
+                                v{{ appVersion }}
+                            </span>
+                        </div>
                         <p class="text-xs text-slate-400">CSV動的読み込み対応（全{{ songs.length }}曲）</p>
                     </div>
                 </div>
@@ -98,15 +103,19 @@
                     </div>
                 </div>
 
-                <!-- ステータス -->
-                <div class="bg-slate-800/80 border border-slate-700/60 p-5 rounded-2xl shadow-xl">
-                    <h3 class="text-lg font-bold mb-3 flex items-center text-slate-200">
-                        <i class="fa-solid fa-database text-indigo-400 mr-2"></i> CSVマスターデータ読み込みステータス
-                    </h3>
-                    <p class="text-sm text-slate-300 mb-2">
-                        <span v-if="isLoadingCsv" class="text-amber-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> CSV読み込み中...</span>
-                        <span v-else class="text-emerald-400"><i class="fa-solid fa-check-circle mr-1"></i> リポジトリ内の `phigros_songs.csv` から <span class="font-bold text-cyan-400">{{ songs.length }} 曲</span> を正常に自動ロードしました！</span>
-                    </p>
+                <!-- 概要情報カード -->
+                <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-100 flex items-center">
+                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> スコア自動更新の使い方
+                        </h3>
+                        <p class="text-sm text-slate-300 mt-1">
+                            「動画解析・更新」タブから選曲画面のスクロール動画を読み込むと、1fごとに中央カードを検知して全曲の自己ベストを自動更新できます。
+                        </p>
+                    </div>
+                    <button @click="currentTab = 'analyzer'" class="shrink-0 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
+                        <i class="fa-solid fa-video mr-2"></i> スコアを更新する
+                    </button>
                 </div>
             </div>
 
@@ -212,15 +221,37 @@
 
             <!-- 4. マスター管理タブ -->
             <div v-if="currentTab === 'settings'" class="space-y-6">
+                <!-- アプリバージョン & CSVデータ読み込みステータス -->
+                <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-3">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                        <h3 class="text-lg font-bold text-slate-100 flex items-center">
+                            <i class="fa-solid fa-database text-indigo-400 mr-2"></i> CSVマスターデータステータス
+                        </h3>
+                        <span class="px-2.5 py-1 bg-slate-900 border border-slate-700 text-xs font-mono font-bold text-cyan-400 rounded-lg">
+                            App Ver: {{ appVersion }}
+                        </span>
+                    </div>
+
+                    <p class="text-sm text-slate-300">
+                        <span v-if="isLoadingCsv" class="text-amber-400 flex items-center">
+                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> CSVマスターデータ（phigros_songs.csv）を読み込み中...
+                        </span>
+                        <span v-else class="text-emerald-400 flex items-center">
+                            <i class="fa-solid fa-circle-check mr-2"></i> リポジトリ内の <code class="bg-slate-900 px-1.5 py-0.5 rounded text-cyan-300 mx-1">phigros_songs.csv</code> から <span class="font-bold text-cyan-400 ml-1 font-mono">{{ songs.length }} 曲</span> を正常に読み込みました。
+                        </span>
+                    </p>
+                </div>
+
+                <!-- 手動更新 / ローカルインポート -->
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4">
-                    <h3 class="text-xl font-bold text-slate-100 flex items-center">
+                    <h3 class="text-lg font-bold text-slate-100 flex items-center">
                         <i class="fa-solid fa-file-csv text-cyan-400 mr-2"></i> CSVの手動再読み込み・手動更新
                     </h3>
                     <p class="text-sm text-slate-400">
                         リポジトリの `phigros_songs.csv` を更新した後にブラウザで読み直すか、手元で作成した最新CSVを直接インポートして同期できます。
                     </p>
 
-                    <div class="flex flex-wrap gap-4 pt-2">
+                    <div class="flex flex-wrap gap-4 pt-1">
                         <label class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl cursor-pointer shadow-lg transition">
                             <i class="fa-solid fa-file-arrow-up mr-2"></i> ローカルのCSVを選択して読み込む
                             <input type="file" accept=".csv" @change="handleCsvImport" class="hidden">
@@ -240,6 +271,7 @@
 
         createApp({
             setup() {
+                const appVersion = ref('4.0.1.1'); // アプリバージョン
                 const currentTab = ref('dashboard');
                 const songs = ref([]);
                 const scores = ref({});
@@ -390,6 +422,7 @@
                 };
 
                 return {
+                    appVersion,
                     currentTab,
                     songs,
                     scores,
