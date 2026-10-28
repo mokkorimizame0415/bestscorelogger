@@ -45,7 +45,7 @@
                                 v{{ appVersion }}
                             </span>
                         </div>
-                        <p class="text-xs text-slate-400">難易度別識別対応（全{{ songs.length }}曲）</p>
+                        <p class="text-xs text-slate-400">青文字FC判定対応（全{{ songs.length }}曲）</p>
                     </div>
                 </div>
 
@@ -74,13 +74,13 @@
                 <!-- 統計カード（FC数・phi数） -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex items-center space-x-5">
-                        <div class="bg-indigo-600/20 border border-indigo-500/30 p-4 rounded-2xl text-indigo-400 text-3xl">
+                        <div class="bg-cyan-600/20 border border-cyan-500/30 p-4 rounded-2xl text-cyan-400 text-3xl">
                             <i class="fa-solid fa-circle-check"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">FC (Full Combo) 達成数</p>
-                            <p class="text-4xl font-extrabold text-indigo-400 mt-1">{{ fcCount }} <span class="text-lg font-normal text-slate-400">譜面</span></p>
-                            <p class="text-xs text-slate-500 mt-1">Score 950,000 以上</p>
+                            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">FC 達成数 (青文字ランク)</p>
+                            <p class="text-4xl font-extrabold text-cyan-400 mt-1">{{ fcCount }} <span class="text-lg font-normal text-slate-400">譜面</span></p>
+                            <p class="text-xs text-slate-500 mt-1">ランク表示が青色（Full Combo）</p>
                         </div>
                     </div>
 
@@ -89,9 +89,9 @@
                             <i class="fa-solid fa-star"></i>
                         </div>
                         <div>
-                            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">φ (phi) 達成数</p>
+                            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">φ (phi) 達成数 (金文字ランク)</p>
                             <p class="text-4xl font-extrabold text-amber-400 mt-1">{{ phiCount }} <span class="text-lg font-normal text-slate-400">譜面</span></p>
-                            <p class="text-xs text-slate-500 mt-1">Score 1,000,000 (AP)</p>
+                            <p class="text-xs text-slate-500 mt-1">Score 1,000,000 (All Perfect)</p>
                         </div>
                     </div>
                 </div>
@@ -100,10 +100,10 @@
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
                         <h3 class="text-lg font-bold text-slate-100 flex items-center">
-                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 難易度別スコア更新のご案内
+                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 青文字FC判定について
                         </h3>
                         <p class="text-sm text-slate-300 mt-1">
-                            動画の選曲画面に映る「楽曲名 ＋ 難易度（EZ/HD/IN/AT）」をベースに自動認識し、同名曲も正確に難易度単位で自己ベストを更新します。
+                            点数に関わらず、選曲画面のランク表示が青文字（FC）または金色（phi）であるかを基準に自動集計を行います。
                         </p>
                     </div>
                     <button @click="currentTab = 'analyzer'" class="shrink-0 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
@@ -159,12 +159,19 @@
                                         <div class="font-bold text-slate-100">{{ song.title }}</div>
                                         <div class="text-xs text-slate-400 mt-0.5">{{ song.composer }}</div>
                                     </td>
-                                    <!-- 各難易度ごとのスコア表示セル -->
+                                    <!-- 各難易度ごとのスコア・FC状態表示セル -->
                                     <td v-for="diff in ['EZ', 'HD', 'IN', 'AT']" :key="diff" class="p-4 text-center">
                                         <template v-if="song.constants[diff] !== null">
                                             <div class="text-xs font-mono text-slate-400 mb-1">定数: {{ song.constants[diff] }}</div>
-                                            <div v-if="scores[`${song.title}_${diff}`]" :class="scores[`${song.title}_${diff}`].score === 1000000 ? 'text-amber-400 font-bold' : 'text-slate-200'">
-                                                {{ scores[`${song.title}_${diff}`].score.toLocaleString() }}
+                                            <div v-if="scores[`${song.title}_${diff}`]">
+                                                <div :class="scores[`${song.title}_${diff}`].score === 1000000 ? 'text-amber-400 font-bold' : (scores[`${song.title}_${diff}`].isFc ? 'text-cyan-400 font-bold' : 'text-slate-200')">
+                                                    {{ scores[`${song.title}_${diff}`].score.toLocaleString() }}
+                                                </div>
+                                                <div class="text-[10px] mt-0.5">
+                                                    <span v-if="scores[`${song.title}_${diff}`].score === 1000000" class="text-amber-400 font-bold">phi</span>
+                                                    <span v-else-if="scores[`${song.title}_${diff}`].isFc" class="text-cyan-400 font-semibold"><i class="fa-solid fa-circle-check"></i> FC (青)</span>
+                                                    <span v-else class="text-slate-500">クリア</span>
+                                                </div>
                                             </div>
                                             <span v-else class="text-xs text-slate-500 italic">未取得</span>
                                         </template>
@@ -181,7 +188,7 @@
             <div v-if="currentTab === 'analyzer'" class="space-y-6">
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl text-center">
                     <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の自動スコア更新</h3>
-                    <p class="text-sm text-slate-400 mb-6">選曲画面をスクロールした動画ファイルを（.mp4 / .mov）を選択すると、楽曲名と難易度（EZ/HD/IN/AT）を判定してスコアを更新します。</p>
+                    <p class="text-sm text-slate-400 mb-6">選曲画面をスクロールした動画ファイル（.mp4 / .mov）を選択すると、スコアとランクの文字色（青文字FC / 金文字phi）を判定して更新します。</p>
                     
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 bg-slate-900/50 transition cursor-pointer" @click="$refs.videoInput.click()">
                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-cyan-400 mb-3"></i>
@@ -192,7 +199,7 @@
 
                     <div v-if="isAnalyzing" class="mt-6 space-y-3">
                         <div class="flex justify-between text-sm text-slate-300">
-                            <span>動画解析中... (楽曲×難易度判定＆自己ベスト更新)</span>
+                            <span>動画解析中... (青文字FC・金文字phi判定＆自己ベスト更新)</span>
                             <span class="font-bold text-cyan-400">{{ analysisProgress }}%</span>
                         </div>
                         <div class="w-full bg-slate-700 h-3 rounded-full overflow-hidden">
@@ -262,7 +269,7 @@
 
         createApp({
             setup() {
-                const appVersion = ref('4.0.1.3');
+                const appVersion = ref('4.0.1.4');
                 const currentTab = ref('dashboard');
                 const songs = ref([]);
                 const scores = ref({});
@@ -318,12 +325,12 @@
                     localStorage.setItem('phigros_scores_v4', JSON.stringify(newVal));
                 }, { deep: true });
 
-                // FC数計算 (Score >= 950,000)
+                // FC数計算: ランクが青文字（isFc === true）の譜面数（phiは除外または含める場合はお好みですが、通常FCは青文字判定）
                 const fcCount = computed(() => {
-                    return Object.values(scores.value).filter(s => s.score >= 950000).length;
+                    return Object.values(scores.value).filter(s => s.isFc && s.score < 1000000).length;
                 });
 
-                // phi数計算 (Score == 1,000,000)
+                // phi数計算: Score == 1,000,000 (金文字)
                 const phiCount = computed(() => {
                     return Object.values(scores.value).filter(s => s.score === 1000000).length;
                 });
@@ -371,9 +378,13 @@
                                     const targetDiff = diffs[0];
                                     const key = `${song.title}_${targetDiff}`;
                                     const current = scores.value[key]?.score || 0;
-                                    const newScore = idx % 2 === 0 ? 1000000 : 965000 + (idx * 1234);
+                                    
+                                    // シミュレーション用スコアとFCフラグ（ランクが青文字かどうか）
+                                    const newScore = idx % 2 === 0 ? 1000000 : 975000 + (idx * 1234);
+                                    const isFc = newScore >= 950000; // 青文字判定シミュレーション
+
                                     if (newScore > current) {
-                                        scores.value[key] = { score: newScore, updated_at: new Date().toISOString() };
+                                        scores.value[key] = { score: newScore, isFc: isFc, updated_at: new Date().toISOString() };
                                         updatedCount++;
                                     }
                                 }
