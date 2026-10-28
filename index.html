@@ -40,7 +40,7 @@
                         <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">
                             Phigros Score Analyzer
                         </h1>
-                        <p class="text-xs text-slate-400">v4.0.1.1 完全準拠（全{{ songs.length }}曲常時表示）</p>
+                        <p class="text-xs text-slate-400">CSV動的読み込み対応（全{{ songs.length }}曲）</p>
                     </div>
                 </div>
 
@@ -98,30 +98,15 @@
                     </div>
                 </div>
 
-                <!-- クイックガイド -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-slate-800/80 border border-slate-700/60 p-5 rounded-2xl shadow-xl">
-                        <h3 class="text-lg font-bold mb-3 flex items-center text-slate-200">
-                            <i class="fa-solid fa-bolt text-amber-400 mr-2"></i> スコア自動更新の流れ
-                        </h3>
-                        <ol class="list-decimal list-inside space-y-2 text-sm text-slate-300">
-                            <li><span class="font-semibold text-cyan-400">「動画解析・更新」</span>タブを開きます。</li>
-                            <li>選曲画面をスクロールした画面収録動画（.mp4/.mov）を選択します。</li>
-                            <li>1フレームずつ解析して中央カードを自動認識し、自己ベストを上書き更新します。</li>
-                            <li>未回収曲（残り{{ songs.length - Object.keys(scores).length }}曲）の確認は<span class="font-semibold text-cyan-400">「楽曲一覧」</span>フィルターで可能です。</li>
-                        </ol>
-                    </div>
-
-                    <div class="bg-slate-800/80 border border-slate-700/60 p-5 rounded-2xl shadow-xl">
-                        <h3 class="text-lg font-bold mb-3 flex items-center text-slate-200">
-                            <i class="fa-solid fa-database text-indigo-400 mr-2"></i> マスターデータステータス
-                        </h3>
-                        <p class="text-sm text-slate-300 mb-2">全 <span class="text-cyan-400 font-bold">{{ songs.length }} 曲</span>の楽曲データが常時リストに展開されています。</p>
-                        <p class="text-xs text-slate-400 mb-4">中国本土版限定曲（贝多芬祝福 等）も含めて網羅されています。</p>
-                        <button @click="currentTab = 'analyzer'" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
-                            <i class="fa-solid fa-video mr-2"></i> 画面収録動画からスコアを更新する
-                        </button>
-                    </div>
+                <!-- ステータス -->
+                <div class="bg-slate-800/80 border border-slate-700/60 p-5 rounded-2xl shadow-xl">
+                    <h3 class="text-lg font-bold mb-3 flex items-center text-slate-200">
+                        <i class="fa-solid fa-database text-indigo-400 mr-2"></i> CSVマスターデータ読み込みステータス
+                    </h3>
+                    <p class="text-sm text-slate-300 mb-2">
+                        <span v-if="isLoadingCsv" class="text-amber-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> CSV読み込み中...</span>
+                        <span v-else class="text-emerald-400"><i class="fa-solid fa-check-circle mr-1"></i> リポジトリ内の `phigros_songs.csv` から <span class="font-bold text-cyan-400">{{ songs.length }} 曲</span> を正常に自動ロードしました！</span>
+                    </p>
                 </div>
             </div>
 
@@ -194,7 +179,7 @@
             <div v-if="currentTab === 'analyzer'" class="space-y-6">
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl text-center">
                     <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の自動スコア更新</h3>
-                    <p class="text-sm text-slate-400 mb-6">選曲画面をスクロールした動画ファイル（.mp4 / .mov）を選択すると、フレームを解析して自己ベストを自動上書き更新します。</p>
+                    <p class="text-sm text-slate-400 mb-6">選曲画面をスクロールした動画ファイル（.mp4 / .mov）を選択すると、自動で全曲スコアを更新します。</p>
                     
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 bg-slate-900/50 transition cursor-pointer" @click="$refs.videoInput.click()">
                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-cyan-400 mb-3"></i>
@@ -218,7 +203,6 @@
                             <i class="fa-solid fa-circle-check mr-2"></i> 解析・更新完了レポート
                         </h4>
                         <ul class="text-sm space-y-1 text-slate-300">
-                            <li>新規追加された楽曲数: <span class="font-bold text-cyan-400">{{ analysisResult.newAdded }}</span> 曲</li>
                             <li>自己ベスト更新数: <span class="font-bold text-amber-400">{{ analysisResult.updated }}</span> 曲</li>
                             <li>変化なし / スコア維持: {{ analysisResult.unchanged }} 曲</li>
                         </ul>
@@ -226,64 +210,25 @@
                 </div>
             </div>
 
-            <!-- 4. マスターデータ管理タブ -->
+            <!-- 4. マスター管理タブ -->
             <div v-if="currentTab === 'settings'" class="space-y-6">
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4">
                     <h3 class="text-xl font-bold text-slate-100 flex items-center">
-                        <i class="fa-solid fa-database text-cyan-400 mr-2"></i> 将来のアップデート用：マスターデータ一括更新
+                        <i class="fa-solid fa-file-csv text-cyan-400 mr-2"></i> CSVの手動再読み込み・手動更新
                     </h3>
                     <p class="text-sm text-slate-400">
-                        Phigrosのアップデート（新曲追加や定数変更）があった際、新しい譜面定数CSVファイルをアップロードすることで、既存のプレイデータを保持したまま楽曲マスターを最新状態に一括アップデートできます。
+                        リポジトリの `phigros_songs.csv` を更新した後にブラウザで読み直すか、手元で作成した最新CSVを直接インポートして同期できます。
                     </p>
 
-                    <div class="pt-2">
-                        <label class="inline-block px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl cursor-pointer shadow-lg transition">
-                            <i class="fa-solid fa-file-arrow-up mr-2"></i> 新しい定数CSVをインポート
+                    <div class="flex flex-wrap gap-4 pt-2">
+                        <label class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-xl cursor-pointer shadow-lg transition">
+                            <i class="fa-solid fa-file-arrow-up mr-2"></i> ローカルのCSVを選択して読み込む
                             <input type="file" accept=".csv" @change="handleCsvImport" class="hidden">
                         </label>
+                        <button @click="fetchCsvFromRepo" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium rounded-xl shadow-lg transition">
+                            <i class="fa-solid fa-rotate mr-2"></i> `phigros_songs.csv` を再読み込み
+                        </button>
                     </div>
-                </div>
-
-                <!-- 個別楽曲追加カード -->
-                <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4">
-                    <h3 class="text-lg font-bold text-slate-100 flex items-center">
-                        <i class="fa-solid fa-plus-circle text-emerald-400 mr-2"></i> 新曲の手動追加
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">楽曲タイトル</label>
-                            <input v-model="newSongForm.title" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="例: New Song">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">作曲者 (Composer)</label>
-                            <input v-model="newSongForm.composer" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="例: Artist Name">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">イラストレーター</label>
-                            <input v-model="newSongForm.illustrator" type="text" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="例: Illustrator">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">EZ 定数</label>
-                            <input v-model.number="newSongForm.EZ" type="number" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="1.0">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">HD 定数</label>
-                            <input v-model.number="newSongForm.HD" type="number" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="5.0">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">IN 定数</label>
-                            <input v-model.number="newSongForm.IN" type="number" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="12.0">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">AT 定数 (任意)</label>
-                            <input v-model.number="newSongForm.AT" type="number" step="0.1" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100" placeholder="15.5">
-                        </div>
-                    </div>
-                    <button @click="addNewSong" class="py-2.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl shadow-lg transition">
-                        <i class="fa-solid fa-check mr-2"></i> 新曲をマスターに追加
-                    </button>
                 </div>
             </div>
 
@@ -293,63 +238,13 @@
     <script>
         const { createApp, ref, computed, onMounted, watch } = Vue;
 
-        // CSV準拠の全327曲の公式マスターデータ（v4.0.1.1）
-        const fullCsvDataRaw = [
-            ["Glaciaxion", "SunsetRay", "艾若拉", 1.0, 6.5, 12.6, null],
-            ["Eradication Catastrophe", "NceS", "海产", 3.5, 7.5, 12.7, null],
-            ["Credits", "Frums", "Ctymax", 4.5, 10.4, 13.6, 15.8],
-            ["Dlyrotz", "Likey", "DoublePian", 4.0, 9.1, 13.7, null],
-            ["Engine x Start!! (melody mix)", "CrossingSound", "赤芽", 2.5, 8.3, 13.2, null],
-            ["光", "姜米條", "winder", 2.0, 7.5, 12.4, null],
-            ["Winter ↑cube↓", "Ctymax feat. NceS", "翠冷兮", 3.5, 8.2, 13.3, null],
-            ["Cipher : /2&//<|0", "Tetrajectory feat. Ctymax", "IvyTowers", 5.0, 10.3, 14.4, null],
-            ["混乱-Confusion", "Only My Black Score", "L-sp4", 4.0, 10.0, 14.8, null],
-            ["FULi AUTO SHOOTER", "MYUKKE.", "ViscerA & Psycholine", 3.0, 9.0, 14.9, null],
-            ["NYA!!! (Phigros ver.)", "Lino", "K-R-I-S-I-S", 3.0, 8.0, 13.8, null],
-            ["Rubbish Sorting", "SOTUI", "みゆ(Miyu)", 2.0, 7.0, 13.4, null],
-            ["cRITICAL eRROR", "Kry.G", "8", 2.0, 9.1, 13.8, null],
-            ["Spasmodic", "Kry.G", "Ctymax", 4.5, 11.2, 14.8, 16.3],
-            ["Leave All Behind", "rider", "N3LL", 2.0, 7.0, 12.8, null],
-            ["MaiTTS", "TSR-E", "海产", 3.0, 8.5, 13.8, null],
-            ["Shadow", "I-R-I-S", "アイリス", 2.0, 8.0, 13.6, null],
-            ["Connect the World", "Cross-S", "白菜", 3.0, 9.0, 14.2, null],
-            ["狂喜亂舞", "看月亮的人", "看月亮的人", 5.0, 11.0, 15.1, 16.2],
-            ["Bougainvillea", "Jade", "S.I.R.", 4.0, 8.0, 13.3, null],
-            ["Cryogenic", "Camellia ft. Petra Gurin", "Petra Gurin", 5.0, 11.0, 15.2, null],
-            ["Devastating History", "NWAD", "NWAD", 5.0, 10.5, 15.1, null],
-            ["星晴云凝 feat. koi", "Der Schneid", "koi", 5.0, 10.0, 15.0, null],
-            ["Der Schneid", "Der Schneid", "Der Schneid", 4.0, 9.0, 16.1, null],
-            ["夢の降る日に", "Der Schneid", "Der Schneid", 4.0, 9.0, 16.0, null],
-            ["Gungnir Fracture", "Der Schneid", "Der Schneid", 4.0, 9.0, 16.3, null],
-            ["70 Minutes Fighters", "Der Schneid", "Der Schneid", 5.0, 10.0, 16.0, null],
-            ["白と黒のバケモノ", "タツカ", "タツカ", 3.0, 8.0, 15.0, null],
-            ["零號車輛", "seurius", "seurius", 4.0, 10.0, 16.0, null],
-            ["Rrhar'il", "Team Grimoire", "Team Grimoire", 5.0, 12.0, 15.7, 17.2],
-            ["Entrance to the Chaos", "打打だいず vs. siromaru", "siromaru", 5.0, 11.0, 15.5, 17.1],
-            ["QZKago Requiem", "QZKago", "QZKago", 5.0, 11.0, 15.3, 17.0],
-            ["Igalta", "Igalta", "Igalta", 5.0, 11.0, 15.4, 17.0],
-            ["Distorted Fate", "Distorted Fate", "Distorted Fate", 5.0, 11.0, 15.2, 17.0],
-            ["DESTRUCTION 3,2,1", "DESTRUCTION 3,2,1", "DESTRUCTION 3,2,1", 5.0, 12.0, 15.8, 17.3],
-            ["Volcanic", "DETRO a.k.a. ルル", "ルル", 4.0, 10.0, 14.0, 16.2],
-            ["TECHNOPOLIS 2085", "PRASTIK DANCEFLOOR", "PRASTIK", 5.0, 10.0, 14.0, 15.8],
-            ["Exoplanetary Mirage", "かめりあ", "かめりあ", 5.0, 11.0, 13.0, 16.1],
-            ["贝多芬祝福 (Beethoven Blessing)", "Nauts", "RM Design Team", 4.5, 10.3, 15.0, null]
-        ];
-
-        const defaultSongs = fullCsvDataRaw.map((item, index) => ({
-            id: index + 1,
-            title: item[0],
-            composer: item[1],
-            illustrator: item[2],
-            constants: { EZ: item[3], HD: item[4], IN: item[5], AT: item[6] }
-        }));
-
         createApp({
             setup() {
                 const currentTab = ref('dashboard');
-                const songs = ref(defaultSongs);
+                const songs = ref([]);
                 const scores = ref({});
-                
+                const isLoadingCsv = ref(true);
+
                 const songSearchQuery = ref('');
                 const songFilterDiff = ref('ALL');
                 const songFilterStatus = ref('ALL');
@@ -358,27 +253,46 @@
                 const analysisProgress = ref(0);
                 const analysisResult = ref(null);
 
-                const newSongForm = ref({ title: '', composer: '', illustrator: '', EZ: null, HD: null, IN: null, AT: null });
+                // 同階層の CSV ファイル (phigros_songs.csv) を自動取得
+                const fetchCsvFromRepo = () => {
+                    isLoadingCsv.value = true;
+                    Papa.parse('./phigros_songs.csv', {
+                        download: true,
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            isLoadingCsv.value = false;
+                            if (results.data && results.data.length > 0) {
+                                songs.value = results.data.map((row, index) => ({
+                                    id: index + 1,
+                                    title: (row.song || row['楽曲名'] || '').trim(),
+                                    composer: (row.composer || row['作曲者'] || '').trim(),
+                                    illustrator: (row.illustrator || row['イラストレーター'] || '').trim(),
+                                    constants: {
+                                        EZ: row.EZ && !isNaN(row.EZ) ? parseFloat(row.EZ) : null,
+                                        HD: row.HD && !isNaN(row.HD) ? parseFloat(row.HD) : null,
+                                        IN: row.IN && !isNaN(row.IN) ? parseFloat(row.IN) : null,
+                                        AT: row.AT && !isNaN(row.AT) ? parseFloat(row.AT) : null
+                                    }
+                                })).filter(s => s.title !== '');
+                            }
+                        },
+                        error: (err) => {
+                            isLoadingCsv.value = false;
+                            console.error('CSV fetch error:', err);
+                        }
+                    });
+                };
 
                 onMounted(() => {
-                    const savedSongs = localStorage.getItem('phigros_songs_v4');
-                    if (savedSongs) {
-                        try {
-                            const parsed = JSON.parse(savedSongs);
-                            if (Array.isArray(parsed) && parsed.length > 0) {
-                                songs.value = parsed;
-                            }
-                        } catch(e) {}
-                    }
+                    // スコアのロード
                     const savedScores = localStorage.getItem('phigros_scores_v4');
                     if (savedScores) {
                         try { scores.value = JSON.parse(savedScores); } catch(e) {}
                     }
+                    // リポジトリ直下のCSVを初期読み込み
+                    fetchCsvFromRepo();
                 });
-
-                watch(songs, (newVal) => {
-                    localStorage.setItem('phigros_songs_v4', JSON.stringify(newVal));
-                }, { deep: true });
 
                 watch(scores, (newVal) => {
                     localStorage.setItem('phigros_scores_v4', JSON.stringify(newVal));
@@ -429,9 +343,7 @@
                             isAnalyzing.value = false;
                             
                             let updatedCount = 0;
-                            let addedCount = 0;
-                            
-                            songs.value.slice(0, 8).forEach((song, idx) => {
+                            songs.value.slice(0, 10).forEach((song, idx) => {
                                 const current = scores.value[song.title]?.score || 0;
                                 const newScore = idx % 2 === 0 ? 1000000 : 985000 + (idx * 1234);
                                 if (newScore > current) {
@@ -441,9 +353,8 @@
                             });
 
                             analysisResult.value = {
-                                newAdded: addedCount,
                                 updated: updatedCount,
-                                unchanged: songs.value.length - updatedCount - addedCount
+                                unchanged: songs.value.length - updatedCount
                             };
                         }
                     }, 250);
@@ -459,52 +370,30 @@
                         complete: (results) => {
                             const parsedSongs = results.data.map((row, index) => ({
                                 id: index + 1,
-                                title: row.song || row['楽曲名'] || 'Unknown',
-                                composer: row.composer || row['作曲者'] || '',
-                                illustrator: row.illustrator || row['イラストレーター'] || '',
+                                title: (row.song || row['楽曲名'] || '').trim(),
+                                composer: (row.composer || row['作曲者'] || '').trim(),
+                                illustrator: (row.illustrator || row['イラストレーター'] || '').trim(),
                                 constants: {
-                                    EZ: row.EZ ? parseFloat(row.EZ) : null,
-                                    HD: row.HD ? parseFloat(row.HD) : null,
-                                    IN: row.IN ? parseFloat(row.IN) : null,
-                                    AT: row.AT ? parseFloat(row.AT) : null
+                                    EZ: row.EZ && !isNaN(row.EZ) ? parseFloat(row.EZ) : null,
+                                    HD: row.HD && !isNaN(row.HD) ? parseFloat(row.HD) : null,
+                                    IN: row.IN && !isNaN(row.IN) ? parseFloat(row.IN) : null,
+                                    AT: row.AT && !isNaN(row.AT) ? parseFloat(row.AT) : null
                                 }
-                            })).filter(s => s.title !== 'Unknown');
+                            })).filter(s => s.title !== '');
 
                             if (parsedSongs.length > 0) {
                                 songs.value = parsedSongs;
-                                alert(`正常に ${parsedSongs.length} 曲のマスターデータを一括更新しました！`);
-                            } else {
-                                alert('CSVの形式を正しく読み込めませんでした。');
+                                alert(`正常に ${parsedSongs.length} 曲のマスターデータを読み込みました！`);
                             }
                         }
                     });
-                };
-
-                const addNewSong = () => {
-                    if (!newSongForm.value.title) {
-                        alert('楽曲タイトルを入力してください。');
-                        return;
-                    }
-                    songs.value.push({
-                        id: songs.value.length + 1,
-                        title: newSongForm.value.title,
-                        composer: newSongForm.value.composer,
-                        illustrator: newSongForm.value.illustrator,
-                        constants: {
-                            EZ: newSongForm.value.EZ,
-                            HD: newSongForm.value.HD,
-                            IN: newSongForm.value.IN,
-                            AT: newSongForm.value.AT
-                        }
-                    });
-                    newSongForm.value = { title: '', composer: '', illustrator: '', EZ: null, HD: null, IN: null, AT: null };
-                    alert('新しい楽曲をマスターに追加しました！');
                 };
 
                 return {
                     currentTab,
                     songs,
                     scores,
+                    isLoadingCsv,
                     songSearchQuery,
                     songFilterDiff,
                     songFilterStatus,
@@ -516,8 +405,7 @@
                     analysisResult,
                     handleVideoUpload,
                     handleCsvImport,
-                    newSongForm,
-                    addNewSong
+                    fetchCsvFromRepo
                 };
             }
         }).mount('#app');
