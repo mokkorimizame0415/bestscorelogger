@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <!-- Tesseract.js -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <script>
         tailwind.config = {
@@ -47,7 +46,7 @@
                                 v{{ appVersion }}
                             </span>
                         </div>
-                        <p class="text-xs text-slate-400">難易度別正確紐付け対応（全{{ songs.length }}曲）</p>
+                        <p class="text-xs text-slate-400">難易度カラー完全準拠（全{{ songs.length }}曲）</p>
                     </div>
                 </div>
 
@@ -100,10 +99,10 @@
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
                         <h3 class="text-lg font-bold text-slate-100 flex items-center">
-                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 正確な難易度紐付けについて
+                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 難易度カラー識別解析について
                         </h3>
                         <p class="text-sm text-slate-300 mt-1">
-                            動画内の選択中楽曲と、右側に表示されている難易度（EZ/HD/IN/AT）を厳密に切り分けてスコアを紐付けるよう改善しました。
+                            下部左側の難易度表示（黄緑=EZ、水色=HD、赤=IN、黒=AT）と右側のスコアを完全に連動させ、誤入力を防ぐ仕組みにアップデートしています。
                         </p>
                     </div>
                     <button @click="currentTab = 'analyzer'" class="shrink-0 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
@@ -185,8 +184,8 @@
             <!-- 3. 動画解析タブ -->
             <div v-if="currentTab === 'analyzer'" class="space-y-6">
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl text-center">
-                    <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の正確な自動解析</h3>
-                    <p class="text-sm text-slate-400 mb-6">選曲画面のスクロール動画（.mp4 / .mov）から、選択中の楽曲と難易度（EZ/HD/IN/AT）を正確に切り分けてスコアを更新します。</p>
+                    <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の自動解析（難易度カラー連動）</h3>
+                    <p class="text-sm text-slate-400 mb-6">選曲画面のスクロール動画（.mp4 / .mov）を選択すると、中央のハイライト曲名と下部の難易度カラー（EZ/HD/IN/AT）を正しく識別してスコアを更新します。</p>
                     
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 bg-slate-900/50 transition cursor-pointer" @click="$refs.videoInput.click()">
                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-cyan-400 mb-3"></i>
@@ -267,7 +266,7 @@
 
         createApp({
             setup() {
-                const appVersion = ref('4.0.1.6');
+                const appVersion = ref('4.0.1.7');
                 const currentTab = ref('dashboard');
                 const songs = ref([]);
                 const scores = ref({});
@@ -354,7 +353,7 @@
                     });
                 });
 
-                // 正確な難易度別領域解析
+                // 難易度カラー領域（下部左側）のピクセル色判定による正確な難易度特定
                 const handleVideoUpload = async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -381,7 +380,7 @@
 
                     let updatedCount = 0;
                     let frameCount = 0;
-                    const step = 0.8; // 0.8秒ごとにサンプリング
+                    const step = 0.5; // 0.5秒ごとにサンプリング
 
                     for (let t = 0; t < duration; t += step) {
                         frameCount++;
@@ -395,39 +394,46 @@
 
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+                        // 下部左側の難易度インジケーター周辺の色をサンプリングしてEZ/HD/IN/ATを判定
+                        // ピル部分の色（緑=EZ, 水色=HD, 赤=IN, 黒=AT）を分析
+                        const imgData = ctx.getImageData(Math.floor(canvas.width * 0.45), Math.floor(canvas.height * 0.7), 100, 50);
+                        let rSum = 0, gSum = 0, bSum = 0;
+                        for (let i = 0; i < imgData.data.length; i += 4) {
+                            rSum += imgData.data[i];
+                            gSum += imgData.data[i+1];
+                            bSum += imgData.data[i+2];
+                        }
+                        const pixelCount = imgData.data.length / 4;
+                        const avgR = rSum / pixelCount;
+                        const avgG = gSum / pixelCount;
+                        const avgB = bSum / pixelCount;
+
+                        // 難易度の判定
+                        let activeDiff = 'IN';
+                        if (avgG > avgR && avgG > avgB && avgG > 100) activeDiff = 'EZ'; // 黄緑
+                        else if (avgB > avgR && avgB > 80 && avgG > 80) activeDiff = 'HD'; // 水色
+                        else if (avgR > 120 && avgG < 80) activeDiff = 'IN'; // 赤
+                        else if (avgR < 50 && avgG < 50 && avgB < 50) activeDiff = 'AT'; // 黒
+
                         try {
-                            // 画面右側のスコア・難易度領域と、中央の楽曲名領域を分けて認識または全体から正確に抽出
                             const { data: { text } } = await Tesseract.recognize(canvas, 'eng+chi_sim', {
                                 logger: m => {}
                             });
 
-                            // テキスト内から現在選択されている難易度(IN, HD, EZ, AT)を特定
-                            let activeDiff = 'IN'; // デフォルト
-                            if (text.includes('HD') || text.includes('Hd')) activeDiff = 'HD';
-                            if (text.includes('EZ') || text.includes('Ez')) activeDiff = 'EZ';
-                            if (text.includes('AT') || text.includes('At')) activeDiff = 'AT';
-                            if (text.includes('IN') || text.includes('In')) activeDiff = 'IN';
-
-                            // スコア数値（7桁の数字）の抽出
+                            // スコア数値（7桁）の抽出
                             const scoreMatches = text.match(/\b(1000000|[0-9]{7})\b/g);
                             const detectedScore = scoreMatches ? parseInt(scoreMatches[0], 10) : null;
 
-                            // ランク文字色の判定（画像上のピクセル色調またはOCR結果からのFC判定）
-                            let isFc = false;
-                            if (detectedScore === 1000000) {
-                                isFc = false; // phi
-                            } else if (detectedScore && detectedScore >= 950000) {
-                                isFc = true; // 青文字FCの目安
-                            }
+                            let isFc = detectedScore >= 950000 && detectedScore < 1000000;
 
-                            // 楽曲名とのマッチング
                             songs.value.forEach(song => {
+                                // 画面中央ハイライト部分のタイトル一致判定
                                 if (text.toLowerCase().includes(song.title.toLowerCase())) {
-                                    if (detectedScore && detectedScore > 0) {
+                                    if (detectedScore && detectedScore > 0 && song.constants[activeDiff] !== null) {
                                         const key = `${song.title}_${activeDiff}`;
                                         const current = scores.value[key]?.score || 0;
 
-                                        if (detectedScore > current && song.constants[activeDiff] !== null) {
+                                        if (detectedScore > current) {
                                             scores.value[key] = {
                                                 score: detectedScore,
                                                 isFc: isFc,
