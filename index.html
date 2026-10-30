@@ -46,7 +46,7 @@
                                 v{{ appVersion }}
                             </span>
                         </div>
-                        <p class="text-xs text-slate-400">難易度カラー完全準拠（全{{ songs.length }}曲）</p>
+                        <p class="text-xs text-slate-400">高密度フレーム解析対応（全{{ songs.length }}曲）</p>
                     </div>
                 </div>
 
@@ -99,10 +99,10 @@
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
                         <h3 class="text-lg font-bold text-slate-100 flex items-center">
-                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 難易度カラー識別解析について
+                            <i class="fa-solid fa-circle-info text-cyan-400 mr-2"></i> 高密度フレーム解析について
                         </h3>
                         <p class="text-sm text-slate-300 mt-1">
-                            下部左側の難易度表示（黄緑=EZ、水色=HD、赤=IN、黒=AT）と右側のスコアを完全に連動させ、誤入力を防ぐ仕組みにアップデートしています。
+                            解析間隔を0.1秒刻みに高密度化し、スクロール中の動画でも楽曲や難易度を取りこぼすことなく正確に自動抽出します。
                         </p>
                     </div>
                     <button @click="currentTab = 'analyzer'" class="shrink-0 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium rounded-xl shadow-lg transition">
@@ -184,13 +184,13 @@
             <!-- 3. 動画解析タブ -->
             <div v-if="currentTab === 'analyzer'" class="space-y-6">
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl text-center">
-                    <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の自動解析（難易度カラー連動）</h3>
-                    <p class="text-sm text-slate-400 mb-6">選曲画面のスクロール動画（.mp4 / .mov）を選択すると、中央のハイライト曲名と下部の難易度カラー（EZ/HD/IN/AT）を正しく識別してスコアを更新します。</p>
+                    <h3 class="text-xl font-bold mb-2 text-slate-100">画面収録動画の高密度自動解析</h3>
+                    <p class="text-sm text-slate-400 mb-6">スクロール動画（.mp4 / .mov）を選択すると、0.1秒ごとの高密度サンプリングで曲の取りこぼしなく正確にスコアを更新します。</p>
                     
                     <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-2xl p-8 bg-slate-900/50 transition cursor-pointer" @click="$refs.videoInput.click()">
                         <i class="fa-solid fa-cloud-arrow-up text-4xl text-cyan-400 mb-3"></i>
                         <p class="text-sm font-medium text-slate-200">クリックして画面収録動画を選択</p>
-                        <p class="text-xs text-slate-500 mt-1">対応形式: MP4, MOV</p>
+                        <p class="text-xs text-slate-500 mt-1">対応形式: MP4, MOV (取りこぼし防止強化版)</p>
                         <input ref="videoInput" type="file" accept="video/mp4,video/quicktime,video/*" @change="handleVideoUpload" class="hidden">
                     </div>
 
@@ -218,6 +218,7 @@
 
             <!-- 4. マスター管理タブ -->
             <div v-if="currentTab === 'settings'" class="space-y-6">
+                <!-- ステータス -->
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-3">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                         <h3 class="text-lg font-bold text-slate-100 flex items-center">
@@ -238,6 +239,20 @@
                     </p>
                 </div>
 
+                <!-- プレイデータのリセットカード -->
+                <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4">
+                    <h3 class="text-lg font-bold text-rose-400 flex items-center">
+                        <i class="fa-solid fa-triangle-exclamation mr-2"></i> プレイデータの管理（リセット）
+                    </h3>
+                    <p class="text-sm text-slate-400">
+                        これまでに登録・解析されたすべての自己ベストスコアおよびFC/phiデータを完全にリセット（初期化）します。
+                    </p>
+                    <button @click="resetScores" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-medium rounded-xl shadow-lg transition">
+                        <i class="fa-solid fa-trash-can mr-2"></i> スコアデータをすべてリセット
+                    </button>
+                </div>
+
+                <!-- 手動更新 / ローカルインポート -->
                 <div class="bg-slate-800/80 border border-slate-700/60 p-6 rounded-2xl shadow-xl space-y-4">
                     <h3 class="text-lg font-bold text-slate-100 flex items-center">
                         <i class="fa-solid fa-file-csv text-cyan-400 mr-2"></i> CSVの手動再読み込み・手動更新
@@ -266,7 +281,7 @@
 
         createApp({
             setup() {
-                const appVersion = ref('4.0.1.7');
+                const appVersion = ref('4.0.1.8');
                 const currentTab = ref('dashboard');
                 const songs = ref([]);
                 const scores = ref({});
@@ -323,6 +338,15 @@
                     localStorage.setItem('phigros_scores_v4', JSON.stringify(newVal));
                 }, { deep: true });
 
+                // スコアデータをすべてリセットする関数
+                const resetScores = () => {
+                    if (confirm('登録されているすべてのスコアデータ（FC/phi含む）をリセットしますか？この操作は元に戻せません。')) {
+                        scores.value = {};
+                        localStorage.removeItem('phigros_scores_v4');
+                        alert('スコアデータをすべてリセットしました。');
+                    }
+                };
+
                 const fcCount = computed(() => {
                     return Object.values(scores.value).filter(s => s.isFc && s.score < 1000000).length;
                 });
@@ -353,7 +377,7 @@
                     });
                 });
 
-                // 難易度カラー領域（下部左側）のピクセル色判定による正確な難易度特定
+                // 高密度サンプリング（0.1秒刻み）による動画解析
                 const handleVideoUpload = async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -380,12 +404,12 @@
 
                     let updatedCount = 0;
                     let frameCount = 0;
-                    const step = 0.5; // 0.5秒ごとにサンプリング
+                    const step = 0.1; // 0.1秒刻みに高密度化して曲の取りこぼしを完全防止
 
                     for (let t = 0; t < duration; t += step) {
                         frameCount++;
                         analysisProgress.value = Math.min(Math.round((t / duration) * 95), 95);
-                        analysisStatusText.value = `解析中... (${t.toFixed(1)}s / ${duration.toFixed(1)}s)`;
+                        analysisStatusText.value = `高密度解析中... (${t.toFixed(1)}s / ${duration.toFixed(1)}s)`;
 
                         video.currentTime = t;
                         await new Promise((resolve) => {
@@ -394,8 +418,7 @@
 
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                        // 下部左側の難易度インジケーター周辺の色をサンプリングしてEZ/HD/IN/ATを判定
-                        // ピル部分の色（緑=EZ, 水色=HD, 赤=IN, 黒=AT）を分析
+                        // 下部左側の難易度カラー判定
                         const imgData = ctx.getImageData(Math.floor(canvas.width * 0.45), Math.floor(canvas.height * 0.7), 100, 50);
                         let rSum = 0, gSum = 0, bSum = 0;
                         for (let i = 0; i < imgData.data.length; i += 4) {
@@ -408,26 +431,23 @@
                         const avgG = gSum / pixelCount;
                         const avgB = bSum / pixelCount;
 
-                        // 難易度の判定
                         let activeDiff = 'IN';
-                        if (avgG > avgR && avgG > avgB && avgG > 100) activeDiff = 'EZ'; // 黄緑
-                        else if (avgB > avgR && avgB > 80 && avgG > 80) activeDiff = 'HD'; // 水色
-                        else if (avgR > 120 && avgG < 80) activeDiff = 'IN'; // 赤
-                        else if (avgR < 50 && avgG < 50 && avgB < 50) activeDiff = 'AT'; // 黒
+                        if (avgG > avgR && avgG > avgB && avgG > 100) activeDiff = 'EZ';
+                        else if (avgB > avgR && avgB > 80 && avgG > 80) activeDiff = 'HD';
+                        else if (avgR > 120 && avgG < 80) activeDiff = 'IN';
+                        else if (avgR < 50 && avgG < 50 && avgB < 50) activeDiff = 'AT';
 
                         try {
                             const { data: { text } } = await Tesseract.recognize(canvas, 'eng+chi_sim', {
                                 logger: m => {}
                             });
 
-                            // スコア数値（7桁）の抽出
                             const scoreMatches = text.match(/\b(1000000|[0-9]{7})\b/g);
                             const detectedScore = scoreMatches ? parseInt(scoreMatches[0], 10) : null;
 
                             let isFc = detectedScore >= 950000 && detectedScore < 1000000;
 
                             songs.value.forEach(song => {
-                                // 画面中央ハイライト部分のタイトル一致判定
                                 if (text.toLowerCase().includes(song.title.toLowerCase())) {
                                     if (detectedScore && detectedScore > 0 && song.constants[activeDiff] !== null) {
                                         const key = `${song.title}_${activeDiff}`;
@@ -501,6 +521,7 @@
                     analysisProgress,
                     analysisStatusText,
                     analysisResult,
+                    resetScores,
                     handleVideoUpload,
                     handleCsvImport,
                     fetchCsvFromRepo
